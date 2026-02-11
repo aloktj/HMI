@@ -4,7 +4,7 @@
 
   PD 2001: DoorStatusAggregated (Gateway -> HMI), sink, supports multicast + unicast
   PD 2002: HMIStatus_PD (HMI -> Gateway), source
-  MD 2101: DoorCommandAggregated (HMI -> Gateway), source
+  PD 2101: DoorCommandAggregated (HMI -> Gateway), source
   MD 2102: GatewayCommandToHMI (Gateway -> HMI), sink
 -->
 <device host-name="HMI_01" type="HMI">
@@ -62,9 +62,9 @@
         <destination id="1" uri="ip:192.168.56.1" name="GW_DOOR_01"/>
       </telegram>
 
-      <!-- MD source: command/event from HMI to gateway -->
-      <telegram name="DoorCommandAggregated_MD_TX" com-id="2101" data-set-id="1002" com-parameter-id="1" type="source" create="off">
-        <md-parameter protocol="UDP" marshall="off" callback="off"/>
+      <!-- PD source: aggregated door command from HMI to gateway -->
+      <telegram name="DoorCommandAggregated_PD_TX" com-id="2101" data-set-id="1002" com-parameter-id="1" type="source" create="off">
+        <pd-parameter cycle="100000" timeout="300000" validity-behavior="zero" redundant="0" marshall="off" callback="off" offset-address="0"/>
         <source id="1" uri1="ip:192.168.56.2" name="HMI_UNICAST_01"/>
         <destination id="1" uri="ip:192.168.56.1" name="GW_DOOR_01"/>
       </telegram>

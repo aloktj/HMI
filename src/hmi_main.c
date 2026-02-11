@@ -160,6 +160,7 @@ int main(int argc, char **argv)
 
     TRDP_APP_SESSION_T appHandle = NULL;
     TRDP_PUB_T pdPubHandle = NULL;
+    TRDP_PUB_T doorCmdPubHandle = NULL;
     TRDP_LIS_T mdListener = NULL;
 
     HMI_SUBSCRIPTION_T subscriptions[] = {
@@ -170,7 +171,7 @@ int main(int argc, char **argv)
 
     UINT32 i;
     UINT8 pdTxPayload[HMI_PD_PAYLOAD_SIZE];
-    UINT8 mdTxPayload[HMI_MD_PAYLOAD_SIZE];
+    UINT8 doorCmdTxPayload[HMI_DOOR_CMD_PAYLOAD_SIZE];
     UINT8 pdRxPayload[HMI_PD_PAYLOAD_SIZE];
     UINT32 tick = 0u;
     UINT32 maxTicks = 0u;
@@ -227,6 +228,29 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    if (tlp_publish(appHandle,
+                    &doorCmdPubHandle,
+                    NULL,
+                    NULL,
+                    0u,
+                    HMI_DOOR_CMD_PD_COMID,
+                    0u,
+                    0u,
+                    ownIp,
+                    gatewayIp,
+                    HMI_PD_CYCLE_US,
+                    0u,
+                    TRDP_FLAGS_NONE,
+                    NULL,
+                    0u) != TRDP_NO_ERR)
+    {
+        fprintf(stderr, "Failed to create Door Command PD publisher\n");
+        tlp_unpublish(appHandle, pdPubHandle);
+        tlc_closeSession(appHandle);
+        tlc_terminate();
+        return 1;
+    }
+
     if (tlm_addListener(appHandle,
                         &mdListener,
                         NULL,
@@ -243,6 +267,7 @@ int main(int argc, char **argv)
                         NULL) != TRDP_NO_ERR)
     {
         fprintf(stderr, "Failed to create MD listener\n");
+        tlp_unpublish(appHandle, doorCmdPubHandle);
         tlp_unpublish(appHandle, pdPubHandle);
         tlc_closeSession(appHandle);
         tlc_terminate();
@@ -276,23 +301,10 @@ int main(int argc, char **argv)
             fprintf(stderr, "Warning: tlp_put failed\n");
         }
 
-        if ((tick % 10u) == 0u)
+        fill_demo_payload(doorCmdTxPayload, sizeof(doorCmdTxPayload), (UINT8)(0xC0u + (tick & 0x0Fu)));
+        if (tlp_put(appHandle, doorCmdPubHandle, doorCmdTxPayload, (UINT32)sizeof(doorCmdTxPayload)) != TRDP_NO_ERR)
         {
-            fill_demo_payload(mdTxPayload, sizeof(mdTxPayload), (UINT8)(0xA0u + (tick & 0x0Fu)));
-            (void)tlm_notify(appHandle,
-                             NULL,
-                             NULL,
-                             HMI_MD_TX_COMID,
-                             0u,
-                             0u,
-                             ownIp,
-                             gatewayIp,
-                             TRDP_FLAGS_NONE,
-                             NULL,
-                             mdTxPayload,
-                             (UINT32)sizeof(mdTxPayload),
-                             NULL,
-                             NULL);
+            fprintf(stderr, "Warning: door command tlp_put failed\n");
         }
 
         for (i = 0u; i < subCount; ++i)
@@ -318,6 +330,7 @@ int main(int argc, char **argv)
     }
 
     tlm_delListener(appHandle, mdListener);
+    tlp_unpublish(appHandle, doorCmdPubHandle);
     tlp_unpublish(appHandle, pdPubHandle);
     for (i = 0u; i < subCount; ++i)
     {
