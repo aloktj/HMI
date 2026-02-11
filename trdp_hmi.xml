@@ -1,0 +1,114 @@
+<!--
+  TRDP config DB XML for Door HMI Web Application endpoint.
+
+  PD 2001: AggregatedDoorStatus  (Gateway -> HMI), sink, 64 bytes (8 doors × 8 bytes)
+  PD 2002: HMIStatus_PD          (HMI -> Gateway), source, 8 bytes heartbeat
+  PD 2010: AggregatedDoorCommand (HMI -> Gateway), source, 64 bytes (8 doors × 8 bytes)
+  MD 2201: GatewayCommandToHMI   (Gateway -> HMI), sink
+
+  Byte layout per door matches CAN ICD:
+    Status:  [door_state, obstruction, last_cmd, close_blocked, status_counter, 0, 0, 0]
+    Command: [cmd, alive_counter, 0, 0, 0, 0, 0, 0]
+-->
+<device host-name="HMI_WEB_01" type="HMI">
+  <debug level="I" info="AD" file-name="trdp_hmi.log" file-size="1048576"/>
+
+  <data-set-list>
+    <!-- Single door status entry (8 bytes) — maps to CAN Door_Status frame -->
+    <data-set id="1001" name="DoorStatusEntry">
+      <element name="door_state"     type="UINT8" array-size="1"/>
+      <element name="obstruction"    type="UINT8" array-size="1"/>
+      <element name="last_cmd"       type="UINT8" array-size="1"/>
+      <element name="close_blocked"  type="UINT8" array-size="1"/>
+      <element name="status_counter" type="UINT8" array-size="1"/>
+      <element name="reserved5"      type="UINT8" array-size="1"/>
+      <element name="reserved6"      type="UINT8" array-size="1"/>
+      <element name="reserved7"      type="UINT8" array-size="1"/>
+    </data-set>
+
+    <!-- Single door command entry (8 bytes) — maps to CAN Door_Command frame -->
+    <data-set id="1002" name="DoorCommandEntry">
+      <element name="cmd"            type="UINT8" array-size="1"/>
+      <element name="alive_counter"  type="UINT8" array-size="1"/>
+      <element name="reserved2"      type="UINT8" array-size="1"/>
+      <element name="reserved3"      type="UINT8" array-size="1"/>
+      <element name="reserved4"      type="UINT8" array-size="1"/>
+      <element name="reserved5"      type="UINT8" array-size="1"/>
+      <element name="reserved6"      type="UINT8" array-size="1"/>
+      <element name="reserved7"      type="UINT8" array-size="1"/>
+    </data-set>
+
+    <!-- Aggregated: 8 × DoorStatusEntry = 64 bytes -->
+    <data-set id="2001" name="AggregatedDoorStatus">
+      <element name="doors" type="1001" array-size="8"/>
+    </data-set>
+
+    <!-- Aggregated: 8 × DoorCommandEntry = 64 bytes -->
+    <data-set id="2010" name="AggregatedDoorCommand">
+      <element name="doors" type="1002" array-size="8"/>
+    </data-set>
+
+    <!-- HMI heartbeat (8 bytes) -->
+    <data-set id="2002" name="HMIStatusPayload">
+      <element name="alive"    type="UINT8" array-size="1"/>
+      <element name="reserved" type="UINT8" array-size="7"/>
+    </data-set>
+  </data-set-list>
+
+  <com-parameter-list>
+    <com-parameter id="1" qos="5" ttl="64" retries="0"/>
+  </com-parameter-list>
+
+  <bus-interface-list>
+    <bus-interface network-id="1" name="eth0" host-ip="192.168.56.2">
+      <trdp-process cycle-time="10000" vlan-id="0" blocking="no"
+                    traffic-shaping="on" priority="64"/>
+      <pd-com-parameter timeout-value="300000" validity-behavior="zero"
+                        ttl="64" qos="5" marshall="off" callback="off" port="17224"/>
+      <md-com-parameter confirm-timeout="1000000" reply-timeout="5000000"
+                        connect-timeout="60000000" ttl="64" qos="3" retries="2"
+                        protocol="UDP" marshall="off" callback="off"
+                        udp-port="17225" tcp-port="17225" num-sessions="1000"/>
+
+      <!-- PD sink: aggregated door status from gateway -->
+      <telegram name="AggDoorStatus_PD_RX" com-id="2001" data-set-id="2001"
+                com-parameter-id="1" type="sink" create="off">
+        <pd-parameter cycle="100000" timeout="300000"
+                      validity-behavior="zero" redundant="0"
+                      marshall="off" callback="off" offset-address="0"/>
+        <source id="1" uri1="ip:192.168.56.1" name="GW_DOOR_01"/>
+        <destination id="101" uri="mcast:239.192.0.1" name="HMI_MCAST_A"/>
+        <destination id="102" uri="mcast:239.192.0.2" name="HMI_MCAST_B"/>
+        <destination id="201" uri="ip:192.168.56.2"   name="HMI_UNICAST_01"/>
+      </telegram>
+
+      <!-- PD source: HMI heartbeat to gateway -->
+      <telegram name="HMIStatus_PD_TX" com-id="2002" data-set-id="2002"
+                com-parameter-id="1" type="source" create="off">
+        <pd-parameter cycle="100000" timeout="300000"
+                      validity-behavior="zero" redundant="0"
+                      marshall="off" callback="off" offset-address="0"/>
+        <source id="1" uri1="ip:192.168.56.2" name="HMI_UNICAST_01"/>
+        <destination id="1" uri="ip:192.168.56.1" name="GW_DOOR_01"/>
+      </telegram>
+
+      <!-- PD source: aggregated door command to gateway -->
+      <telegram name="AggDoorCmd_PD_TX" com-id="2010" data-set-id="2010"
+                com-parameter-id="1" type="source" create="off">
+        <pd-parameter cycle="100000" timeout="300000"
+                      validity-behavior="zero" redundant="0"
+                      marshall="off" callback="off" offset-address="0"/>
+        <source id="1" uri1="ip:192.168.56.2" name="HMI_UNICAST_01"/>
+        <destination id="1" uri="ip:192.168.56.1" name="GW_DOOR_01"/>
+      </telegram>
+
+      <!-- MD sink: optional command/result from gateway -->
+      <telegram name="GatewayToHMI_MD_RX" com-id="2201" data-set-id="1002"
+                com-parameter-id="1" type="sink" create="off">
+        <md-parameter protocol="UDP" marshall="off" callback="off"/>
+        <source id="1" uri1="ip:192.168.56.1" name="GW_DOOR_01"/>
+        <destination id="1" uri="ip:192.168.56.2" name="HMI_UNICAST_01"/>
+      </telegram>
+    </bus-interface>
+  </bus-interface-list>
+</device>

@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Door HMI Control Panel</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d27;
+    --border: #2a2d3a;
+    --text: #e0e0e8;
+    --dim: #6b7080;
+    --accent: #4a90d9;
+    --green: #2ecc71;
+    --red: #e74c3c;
+    --orange: #f39c12;
+    --grey: #555;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ---------- Header ---------- */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+  }
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .header .conn-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--green);
+    display: inline-block;
+    margin-right: 6px;
+  }
+  .header .conn-dot.offline { background: var(--red); }
+  .header .conn-status { font-size: 13px; color: var(--dim); }
+
+  /* ---------- Top bar: speed + emergency ---------- */
+  .controls-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 20px 24px;
+    align-items: stretch;
+  }
+  .ctrl-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 22px;
+    flex: 1;
+    min-width: 260px;
+  }
+  .ctrl-card h3 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--dim);
+    margin-bottom: 12px;
+  }
+
+  /* Speed control */
+  .speed-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .speed-row input[type=number] {
+    width: 100px;
+    padding: 8px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 18px;
+    text-align: center;
+  }
+  .speed-row input:focus { outline: none; border-color: var(--accent); }
+  .speed-row .unit { font-size: 16px; color: var(--dim); }
+  .speed-row button {
+    padding: 8px 18px;
+    border: none;
+    border-radius: 6px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .speed-row button:hover { background: #3a7ec9; }
+  .speed-display {
+    margin-top: 10px;
+    font-size: 14px;
+    color: var(--dim);
+  }
+  .speed-display .val { color: var(--text); font-weight: 600; font-size: 26px; }
+
+  /* Emergency */
+  .emergency-section { text-align: center; }
+  .btn-emergency {
+    width: 100%;
+    padding: 16px 0;
+    border: 2px solid var(--red);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--red);
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+  }
+  .btn-emergency:hover { background: var(--red); color: #fff; }
+  .btn-emergency.active {
+    background: var(--red);
+    color: #fff;
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+  .btn-emergency-reset {
+    margin-top: 10px;
+    padding: 8px 24px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card);
+    color: var(--dim);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .btn-emergency-reset:hover { border-color: var(--accent); color: var(--text); }
+
+  /* ---------- Door grid ---------- */
+  .doors-section {
+    padding: 0 24px 24px;
+  }
+  .doors-section h2 {
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--dim);
+    margin-bottom: 14px;
+  }
+  .door-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+  }
+  .door-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    transition: border-color 0.2s;
+  }
+  .door-card.state-open { border-left: 3px solid var(--green); }
+  .door-card.state-closed { border-left: 3px solid var(--accent); }
+  .door-card.obstructed { border-left: 3px solid var(--orange); }
+
+  .door-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .door-header .door-name { font-weight: 600; font-size: 16px; }
+  .door-header .door-badge {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .badge-open { background: rgba(46,204,113,0.15); color: var(--green); }
+  .badge-closed { background: rgba(74,144,217,0.15); color: var(--accent); }
+  .badge-obstructed { background: rgba(243,156,18,0.15); color: var(--orange); }
+
+  .door-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 16px;
+    font-size: 13px;
+    color: var(--dim);
+    margin-bottom: 14px;
+  }
+  .door-details .val { color: var(--text); }
+
+  .door-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .door-actions button {
+    flex: 1;
+    padding: 9px 0;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .door-actions button:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: rgba(74,144,217,0.1);
+  }
+  .door-actions button:disabled {
+    color: var(--grey);
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+  .door-actions .btn-open { border-color: var(--green); color: var(--green); }
+  .door-actions .btn-open:hover:not(:disabled) {
+    background: rgba(46,204,113,0.1);
+  }
+  .door-actions .btn-close { border-color: var(--accent); color: var(--accent); }
+  .door-actions .btn-close.obstructed-btn {
+    border-color: var(--orange);
+    color: var(--orange);
+    opacity: 0.35;
+    cursor: not-allowed;
+    position: relative;
+  }
+  .door-actions .btn-close.obstructed-btn::after {
+    content: '⚠ Obstructed';
+    position: absolute;
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: var(--orange);
+    white-space: nowrap;
+  }
+
+  /* ---------- Footer ---------- */
+  .footer {
+    text-align: center;
+    padding: 16px;
+    font-size: 12px;
+    color: var(--grey);
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>🚆 Door HMI Control Panel</h1>
+  <div class="conn-status">
+    <span id="connDot" class="conn-dot"></span>
+    <span id="connText">Connected</span>
+  </div>
+</div>
+
+<!-- Speed + Emergency controls -->
+<div class="controls-bar">
+  <div class="ctrl-card">
+    <h3>Train Speed</h3>
+    <div class="speed-row">
+      <input type="number" id="speedInput" min="0" max="999" value="0" />
+      <span class="unit">km/h</span>
+      <button onclick="setSpeed()">Set</button>
+    </div>
+    <div class="speed-display">
+      Current: <span class="val" id="speedVal">0</span> km/h
+      &nbsp;|&nbsp;
+      Doors: <span id="doorPolicy">CAN OPEN</span>
+    </div>
+  </div>
+  <div class="ctrl-card emergency-section">
+    <h3>Emergency Override</h3>
+    <button id="btnEmergency" class="btn-emergency" onclick="toggleEmergency()">
+      ⚡ EMERGENCY OPEN ALL DOORS
+    </button>
+    <button id="btnEmergencyReset" class="btn-emergency-reset" style="display:none" onclick="resetEmergency()">
+      Reset Emergency
+    </button>
+  </div>
+</div>
+
+<!-- Door grid -->
+<div class="doors-section">
+  <h2>Door Status & Control</h2>
+  <div class="door-grid" id="doorGrid"></div>
+</div>
+
+<div class="footer">
+  Door HMI Gateway PoC — TRDP/CAN Interface &nbsp;|&nbsp; Polling every 500 ms
+</div>
+
+<script>
+const DOOR_COUNT = 8;
+const API_BASE = '';
+let currentState = null;
+let emergencyActive = false;
+
+/* ---- API calls ---- */
+async function apiGet(path) {
+  try {
+    const r = await fetch(API_BASE + path);
+    if (!r.ok) throw new Error(r.statusText);
+    return await r.json();
+  } catch (e) {
+    setConnected(false);
+    return null;
+  }
+}
+async function apiPost(path, body) {
+  try {
+    const r = await fetch(API_BASE + path, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    });
+    return await r.json();
+  } catch (e) {
+    console.error('POST error', path, e);
+    return null;
+  }
+}
+
+/* ---- Connection indicator ---- */
+function setConnected(ok) {
+  document.getElementById('connDot').className = 'conn-dot' + (ok ? '' : ' offline');
+  document.getElementById('connText').textContent = ok ? 'Connected' : 'Offline';
+}
+
+/* ---- Speed ---- */
+function setSpeed() {
+  const v = parseInt(document.getElementById('speedInput').value) || 0;
+  apiPost('/api/speed', {speed: Math.max(0, v)});
+}
+document.getElementById('speedInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') setSpeed();
+});
+
+/* ---- Emergency ---- */
+function toggleEmergency() {
+  emergencyActive = true;
+  apiPost('/api/emergency', {active: true});
+}
+function resetEmergency() {
+  emergencyActive = false;
+  apiPost('/api/emergency', {active: false});
+}
+
+/* ---- Door actions ---- */
+function openDoor(id) { apiPost('/api/door/' + id + '/open', {}); }
+function closeDoor(id) { apiPost('/api/door/' + id + '/close', {}); }
+
+/* ---- Render ---- */
+function stateLabel(v) { return v === 0 ? 'OPEN' : 'CLOSED'; }
+function cmdLabel(v) { return v === 0 ? 'NONE' : v === 1 ? 'OPEN' : 'CLOSE'; }
+function boolLabel(v) { return v ? 'YES' : 'NO'; }
+
+function renderDoors(data) {
+  const grid = document.getElementById('doorGrid');
+  let html = '';
+  const speed = data.speed;
+  const emg = data.emergency;
+
+  data.doors.forEach(d => {
+    const isOpen = d.state === 0;
+    const isClosed = d.state === 1;
+    const isObstructed = d.obstruction === 1;
+    const isCloseBlocked = d.close_blocked === 1;
+
+    let cardClass = 'door-card';
+    let badgeClass, badgeText;
+    if (isObstructed) {
+      cardClass += ' obstructed';
+      badgeClass = 'badge-obstructed';
+      badgeText = 'OBSTRUCTED';
+    } else if (isOpen) {
+      cardClass += ' state-open';
+      badgeClass = 'badge-open';
+      badgeText = 'OPEN';
+    } else {
+      cardClass += ' state-closed';
+      badgeClass = 'badge-closed';
+      badgeText = 'CLOSED';
+    }
+
+    /* Button enable logic:
+     *  OPEN btn:  enabled only if speed==0 (or emergency) AND door is closed
+     *  CLOSE btn: enabled only if door is open AND not obstructed
+     *             greyed out if obstructed
+     */
+    const canOpen = (speed === 0 || emg) && isClosed;
+    const canClose = isOpen && !isObstructed;
+    const showObstructedClose = isOpen && isObstructed;
+
+    let closeBtnClass = 'btn-close';
+    if (showObstructedClose) closeBtnClass += ' obstructed-btn';
+
+    html += `
+      <div class="${cardClass}">
+        <div class="door-header">
+          <span class="door-name">Door ${d.id + 1}</span>
+          <span class="door-badge ${badgeClass}">${badgeText}</span>
+        </div>
+        <div class="door-details">
+          <span>State:</span><span class="val">${stateLabel(d.state)}</span>
+          <span>Obstruction:</span><span class="val">${boolLabel(d.obstruction)}</span>
+          <span>Last Cmd:</span><span class="val">${cmdLabel(d.last_cmd)}</span>
+          <span>Close Blocked:</span><span class="val">${boolLabel(d.close_blocked)}</span>
+          <span>Status Cnt:</span><span class="val">${d.status_counter}</span>
+          <span>HMI Cmd:</span><span class="val">${cmdLabel(d.hmi_cmd)}</span>
+          <span>Alive Cnt:</span><span class="val">${d.alive_counter}</span>
+        </div>
+        <div class="door-actions" style="position:relative;padding-bottom:${showObstructedClose ? '16px' : '0'}">
+          <button class="btn-open" ${canOpen ? `onclick="openDoor(${d.id})"` : 'disabled'}>
+            Open
+          </button>
+          <button class="${closeBtnClass}" ${canClose ? `onclick="closeDoor(${d.id})"` : 'disabled'}>
+            Close
+          </button>
+        </div>
+      </div>
+    `;
+  });
+  grid.innerHTML = html;
+}
+
+function updateTopBar(data) {
+  document.getElementById('speedVal').textContent = data.speed;
+  const policy = document.getElementById('doorPolicy');
+  if (data.emergency) {
+    policy.textContent = 'EMERGENCY — ALL OPEN';
+    policy.style.color = 'var(--red)';
+  } else if (data.speed > 0) {
+    policy.textContent = 'LOCKED (train moving)';
+    policy.style.color = 'var(--orange)';
+  } else {
+    policy.textContent = 'CAN OPEN';
+    policy.style.color = 'var(--green)';
+  }
+
+  const btnEmg = document.getElementById('btnEmergency');
+  const btnReset = document.getElementById('btnEmergencyReset');
+  if (data.emergency) {
+    btnEmg.classList.add('active');
+    btnEmg.textContent = '⚡ EMERGENCY ACTIVE';
+    btnReset.style.display = 'inline-block';
+  } else {
+    btnEmg.classList.remove('active');
+    btnEmg.textContent = '⚡ EMERGENCY OPEN ALL DOORS';
+    btnReset.style.display = 'none';
+  }
+}
+
+/* ---- Poll loop ---- */
+async function poll() {
+  const data = await apiGet('/api/status');
+  if (data) {
+    setConnected(true);
+    currentState = data;
+    updateTopBar(data);
+    renderDoors(data);
+  }
+}
+
+setInterval(poll, 500);
+poll();
+</script>
+</body>
+</html>
