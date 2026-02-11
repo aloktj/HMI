@@ -19,6 +19,12 @@ typedef struct
     const char *name;
 } HMI_SUBSCRIPTION_T;
 
+typedef struct
+{
+    TRDP_PUB_T handle;
+    UINT32 comId;
+} HMI_DOOR_CMD_PUBLISHER_T;
+
 static void usage(const char *app)
 {
     printf("Usage: %s [runtime_s] [own_ip] [gateway_ip] [mc_a] [mc_b]\n", app);
@@ -94,6 +100,64 @@ static void fill_demo_payload(UINT8 *buffer, UINT32 size, UINT8 seed)
     }
 }
 
+static void print_door_command_prompt(void)
+{
+    printf("Door command input: <door_index 0-%u> <cmd 0=open 1=close>, or q to quit input\n", HMI_DOOR_COUNT - 1u);
+}
+
+static int read_door_command(UINT32 *doorIndex, UINT8 *cmd)
+{
+    fd_set readFds;
+    struct timeval timeout = {0, 0};
+    int selectResult;
+    char line[128];
+    unsigned int parsedDoor;
+    unsigned int parsedCmd;
+
+    FD_ZERO(&readFds);
+    FD_SET(0, &readFds);
+    selectResult = select(1, &readFds, NULL, NULL, &timeout);
+    if (selectResult <= 0)
+    {
+        return 0;
+    }
+
+    if (fgets(line, sizeof(line), stdin) == NULL)
+    {
+        return 0;
+    }
+
+    if (line[0] == 'q' || line[0] == 'Q')
+    {
+        return -1;
+    }
+
+    if (sscanf(line, "%u %u", &parsedDoor, &parsedCmd) != 2)
+    {
+        printf("Invalid input. Example: 3 1 (door 3 close)\n");
+        print_door_command_prompt();
+        return 0;
+    }
+
+    if (parsedDoor >= HMI_DOOR_COUNT || (parsedCmd != 0u && parsedCmd != 1u))
+    {
+        printf("Out of range. door_index: 0-%u, cmd: 0(open)/1(close)\n", HMI_DOOR_COUNT - 1u);
+        print_door_command_prompt();
+        return 0;
+    }
+
+    *doorIndex = (UINT32)parsedDoor;
+    *cmd = (UINT8)parsedCmd;
+    return 1;
+}
+
+static void build_door_cmd_payload(UINT8 *payload, UINT8 cmd, UINT8 aliveCounter)
+{
+    memset(payload, 0, HMI_DOOR_CMD_PAYLOAD_SIZE);
+    payload[0] = cmd;
+    payload[1] = aliveCounter;
+}
+
 int main(int argc, char **argv)
 {
     UINT32 runtimeSeconds = 0u;
@@ -160,8 +224,9 @@ int main(int argc, char **argv)
 
     TRDP_APP_SESSION_T appHandle = NULL;
     TRDP_PUB_T pdPubHandle = NULL;
-    TRDP_PUB_T doorCmdPubHandle = NULL;
     TRDP_LIS_T mdListener = NULL;
+    HMI_DOOR_CMD_PUBLISHER_T doorCmdPublishers[HMI_DOOR_COUNT];
+    UINT8 doorAliveCounters[HMI_DOOR_COUNT];
 
     HMI_SUBSCRIPTION_T subscriptions[] = {
         {NULL, ownIp, "unicast"},
@@ -175,11 +240,15 @@ int main(int argc, char **argv)
     UINT8 pdRxPayload[HMI_PD_PAYLOAD_SIZE];
     UINT32 tick = 0u;
     UINT32 maxTicks = 0u;
+    int keepRunning = 1;
 
     if (runtimeSeconds > 0u)
     {
         maxTicks = (runtimeSeconds * 1000000u) / HMI_MAIN_LOOP_SLEEP_US;
     }
+
+    memset(doorCmdPublishers, 0, sizeof(doorCmdPublishers));
+    memset(doorAliveCounters, 0, sizeof(doorAliveCounters));
 
     if (tlc_init(log_cb, NULL, &memConfig) != TRDP_NO_ERR)
     {
@@ -228,27 +297,36 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    if (tlp_publish(appHandle,
-                    &doorCmdPubHandle,
-                    NULL,
-                    NULL,
-                    0u,
-                    HMI_DOOR_CMD_PD_COMID,
-                    0u,
-                    0u,
-                    ownIp,
-                    gatewayIp,
-                    HMI_PD_CYCLE_US,
-                    0u,
-                    TRDP_FLAGS_NONE,
-                    NULL,
-                    0u) != TRDP_NO_ERR)
+    for (i = 0u; i < HMI_DOOR_COUNT; ++i)
     {
-        fprintf(stderr, "Failed to create Door Command PD publisher\n");
-        tlp_unpublish(appHandle, pdPubHandle);
-        tlc_closeSession(appHandle);
-        tlc_terminate();
-        return 1;
+        doorCmdPublishers[i].comId = HMI_DOOR_CMD_PD_COMID_BASE + i;
+        if (tlp_publish(appHandle,
+                        &doorCmdPublishers[i].handle,
+                        NULL,
+                        NULL,
+                        0u,
+                        doorCmdPublishers[i].comId,
+                        0u,
+                        0u,
+                        ownIp,
+                        gatewayIp,
+                        HMI_PD_CYCLE_US,
+                        0u,
+                        TRDP_FLAGS_NONE,
+                        NULL,
+                        0u) != TRDP_NO_ERR)
+        {
+            fprintf(stderr, "Failed to create Door Command PD publisher for door %u\n", i);
+            while (i > 0u)
+            {
+                --i;
+                tlp_unpublish(appHandle, doorCmdPublishers[i].handle);
+            }
+            tlp_unpublish(appHandle, pdPubHandle);
+            tlc_closeSession(appHandle);
+            tlc_terminate();
+            return 1;
+        }
     }
 
     if (tlm_addListener(appHandle,
@@ -267,7 +345,13 @@ int main(int argc, char **argv)
                         NULL) != TRDP_NO_ERR)
     {
         fprintf(stderr, "Failed to create MD listener\n");
-        tlp_unpublish(appHandle, doorCmdPubHandle);
+        for (i = 0u; i < HMI_DOOR_COUNT; ++i)
+        {
+            if (doorCmdPublishers[i].handle != NULL)
+            {
+                tlp_unpublish(appHandle, doorCmdPublishers[i].handle);
+            }
+        }
         tlp_unpublish(appHandle, pdPubHandle);
         tlc_closeSession(appHandle);
         tlc_terminate();
@@ -275,8 +359,9 @@ int main(int argc, char **argv)
     }
 
     printf("HMI started: own=%s gateway=%s\n", vos_ipDotted(ownIp), vos_ipDotted(gatewayIp));
+    print_door_command_prompt();
 
-    for (;;)
+    while (keepRunning)
     {
         TRDP_TIME_T tv = {0u, HMI_MAIN_LOOP_SLEEP_US};
         TRDP_FDS_T rfds;
@@ -301,10 +386,37 @@ int main(int argc, char **argv)
             fprintf(stderr, "Warning: tlp_put failed\n");
         }
 
-        fill_demo_payload(doorCmdTxPayload, sizeof(doorCmdTxPayload), (UINT8)(0xC0u + (tick & 0x0Fu)));
-        if (tlp_put(appHandle, doorCmdPubHandle, doorCmdTxPayload, (UINT32)sizeof(doorCmdTxPayload)) != TRDP_NO_ERR)
         {
-            fprintf(stderr, "Warning: door command tlp_put failed\n");
+            UINT32 selectedDoor = 0u;
+            UINT8 selectedCmd = 0u;
+            int commandResult = read_door_command(&selectedDoor, &selectedCmd);
+            if (commandResult < 0)
+            {
+                keepRunning = 0;
+            }
+            else if (commandResult > 0)
+            {
+                TRDP_ERR_T doorPutResult;
+                build_door_cmd_payload(doorCmdTxPayload, selectedCmd, doorAliveCounters[selectedDoor]);
+                doorPutResult = tlp_put(appHandle,
+                                        doorCmdPublishers[selectedDoor].handle,
+                                        doorCmdTxPayload,
+                                        (UINT32)sizeof(doorCmdTxPayload));
+                if (doorPutResult != TRDP_NO_ERR)
+                {
+                    fprintf(stderr, "Warning: door command tlp_put failed for door %u, err=%d\n", selectedDoor, doorPutResult);
+                }
+                else
+                {
+                    printf("Door command sent: door=%u cmd=%u alive_counter=%u comId=%u\n",
+                           selectedDoor,
+                           selectedCmd,
+                           doorAliveCounters[selectedDoor],
+                           doorCmdPublishers[selectedDoor].comId);
+                    ++doorAliveCounters[selectedDoor];
+                }
+                print_door_command_prompt();
+            }
         }
 
         for (i = 0u; i < subCount; ++i)
@@ -330,7 +442,13 @@ int main(int argc, char **argv)
     }
 
     tlm_delListener(appHandle, mdListener);
-    tlp_unpublish(appHandle, doorCmdPubHandle);
+    for (i = 0u; i < HMI_DOOR_COUNT; ++i)
+    {
+        if (doorCmdPublishers[i].handle != NULL)
+        {
+            tlp_unpublish(appHandle, doorCmdPublishers[i].handle);
+        }
+    }
     tlp_unpublish(appHandle, pdPubHandle);
     for (i = 0u; i < subCount; ++i)
     {

@@ -42,7 +42,14 @@ Default IP layout:
 
 - PD subscribe (`comId=2001`) from gateway over unicast and multicast
 - PD publish (`comId=2002`) from HMI to gateway
-- PD publish (`comId=2101`) from HMI to gateway (DoorCommandAggregated, dataset 1002)
-- MD listener (`comId=2102`) from gateway to HMI
+- PD publish (`comId=2101..2108`) from HMI to gateway (one DoorCommandPayload frame per door, dataset 1002)
+- MD listener (`comId=2201`) from gateway to HMI
 
 HMI XML stack configuration is provided in `config/trdp_hmi.xml`.
+Door command console input (runtime):
+
+- Format: `<door_index> <cmd>`
+- `door_index`: `0..7`
+- `cmd`: `0` (open) or `1` (close)
+- Each command updates payload bytes as: `B0=cmd`, `B1=alive_counter`, `B2..B7=0` and is sent on the selected door comId (`2101 + door_index`).
+

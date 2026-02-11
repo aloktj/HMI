@@ -4,14 +4,14 @@
 
   PD 2001: DoorStatusAggregated (Gateway -> HMI), sink, supports multicast + unicast
   PD 2002: HMIStatus_PD (HMI -> Gateway), source
-  PD 2101: DoorCommandAggregated (HMI -> Gateway), source
+  PD 2101..2108: DoorCommand payloads per door (HMI -> Gateway), source
   MD 2102: GatewayCommandToHMI (Gateway -> HMI), sink
 -->
 <device host-name="HMI_01" type="HMI">
   <debug level="I" info="AD" file-name="trdp_hmi.log" file-size="1048576"/>
 
   <data-set-list>
-    <data-set id="1010" name="DoorSlot8B">
+    <data-set id="1001" name="DoorStatusPayload">
       <element name="door_state" type="UINT8" array-size="1"/>
       <element name="obstruction" type="UINT8" array-size="1"/>
       <element name="last_cmd" type="UINT8" array-size="1"/>
@@ -22,17 +22,15 @@
       <element name="reserved7" type="UINT8" array-size="1"/>
     </data-set>
 
-    <data-set id="1001" name="DoorStatusAggregated">
-      <element name="doors" type="1010" array-size="8"/>
-    </data-set>
-
-    <data-set id="1020" name="CmdSlot2B">
+    <data-set id="1002" name="DoorCommandPayload">
       <element name="cmd" type="UINT8" array-size="1"/>
       <element name="alive_counter" type="UINT8" array-size="1"/>
-    </data-set>
-
-    <data-set id="1002" name="DoorCommandAggregated">
-      <element name="doors" type="1020" array-size="8"/>
+      <element name="reserved2" type="UINT8" array-size="1"/>
+      <element name="reserved3" type="UINT8" array-size="1"/>
+      <element name="reserved4" type="UINT8" array-size="1"/>
+      <element name="reserved5" type="UINT8" array-size="1"/>
+      <element name="reserved6" type="UINT8" array-size="1"/>
+      <element name="reserved7" type="UINT8" array-size="1"/>
     </data-set>
   </data-set-list>
 
@@ -47,7 +45,7 @@
       <md-com-parameter confirm-timeout="1000000" reply-timeout="5000000" connect-timeout="60000000" ttl="64" qos="3" retries="2" protocol="UDP" marshall="off" callback="off" udp-port="17225" tcp-port="17225" num-sessions="1000"/>
 
       <!-- PD sink: Gateway publishes to HMI via multicast and/or unicast -->
-      <telegram name="DoorStatusAggregated_PD_RX" com-id="2001" data-set-id="1001" com-parameter-id="1" type="sink" create="off">
+      <telegram name="DoorStatus_PD_RX" com-id="2001" data-set-id="1001" com-parameter-id="1" type="sink" create="off">
         <pd-parameter cycle="100000" timeout="300000" validity-behavior="zero" redundant="0" marshall="off" callback="off" offset-address="0"/>
         <source id="1" uri1="ip:192.168.56.1" name="GW_DOOR_01"/>
         <destination id="101" uri="mcast:239.192.0.1" name="HMI_MCAST_A"/>
@@ -62,15 +60,50 @@
         <destination id="1" uri="ip:192.168.56.1" name="GW_DOOR_01"/>
       </telegram>
 
-      <!-- PD source: aggregated door command from HMI to gateway -->
-      <telegram name="DoorCommandAggregated_PD_TX" com-id="2101" data-set-id="1002" com-parameter-id="1" type="source" create="off">
+      <!-- PD source: per-door command from HMI console to gateway -->
+      <telegram name="Door01_Command_PD_TX" com-id="2101" data-set-id="1002" com-parameter-id="1" type="source" create="off">
+        <pd-parameter cycle="100000" timeout="300000" validity-behavior="zero" redundant="0" marshall="off" callback="off" offset-address="0"/>
+        <source id="1" uri1="ip:192.168.56.2" name="HMI_UNICAST_01"/>
+        <destination id="1" uri="ip:192.168.56.1" name="GW_DOOR_01"/>
+      </telegram>
+      <telegram name="Door02_Command_PD_TX" com-id="2102" data-set-id="1002" com-parameter-id="1" type="source" create="off">
+        <pd-parameter cycle="100000" timeout="300000" validity-behavior="zero" redundant="0" marshall="off" callback="off" offset-address="0"/>
+        <source id="1" uri1="ip:192.168.56.2" name="HMI_UNICAST_01"/>
+        <destination id="1" uri="ip:192.168.56.1" name="GW_DOOR_01"/>
+      </telegram>
+      <telegram name="Door03_Command_PD_TX" com-id="2103" data-set-id="1002" com-parameter-id="1" type="source" create="off">
+        <pd-parameter cycle="100000" timeout="300000" validity-behavior="zero" redundant="0" marshall="off" callback="off" offset-address="0"/>
+        <source id="1" uri1="ip:192.168.56.2" name="HMI_UNICAST_01"/>
+        <destination id="1" uri="ip:192.168.56.1" name="GW_DOOR_01"/>
+      </telegram>
+      <telegram name="Door04_Command_PD_TX" com-id="2104" data-set-id="1002" com-parameter-id="1" type="source" create="off">
+        <pd-parameter cycle="100000" timeout="300000" validity-behavior="zero" redundant="0" marshall="off" callback="off" offset-address="0"/>
+        <source id="1" uri1="ip:192.168.56.2" name="HMI_UNICAST_01"/>
+        <destination id="1" uri="ip:192.168.56.1" name="GW_DOOR_01"/>
+      </telegram>
+      <telegram name="Door05_Command_PD_TX" com-id="2105" data-set-id="1002" com-parameter-id="1" type="source" create="off">
+        <pd-parameter cycle="100000" timeout="300000" validity-behavior="zero" redundant="0" marshall="off" callback="off" offset-address="0"/>
+        <source id="1" uri1="ip:192.168.56.2" name="HMI_UNICAST_01"/>
+        <destination id="1" uri="ip:192.168.56.1" name="GW_DOOR_01"/>
+      </telegram>
+      <telegram name="Door06_Command_PD_TX" com-id="2106" data-set-id="1002" com-parameter-id="1" type="source" create="off">
+        <pd-parameter cycle="100000" timeout="300000" validity-behavior="zero" redundant="0" marshall="off" callback="off" offset-address="0"/>
+        <source id="1" uri1="ip:192.168.56.2" name="HMI_UNICAST_01"/>
+        <destination id="1" uri="ip:192.168.56.1" name="GW_DOOR_01"/>
+      </telegram>
+      <telegram name="Door07_Command_PD_TX" com-id="2107" data-set-id="1002" com-parameter-id="1" type="source" create="off">
+        <pd-parameter cycle="100000" timeout="300000" validity-behavior="zero" redundant="0" marshall="off" callback="off" offset-address="0"/>
+        <source id="1" uri1="ip:192.168.56.2" name="HMI_UNICAST_01"/>
+        <destination id="1" uri="ip:192.168.56.1" name="GW_DOOR_01"/>
+      </telegram>
+      <telegram name="Door08_Command_PD_TX" com-id="2108" data-set-id="1002" com-parameter-id="1" type="source" create="off">
         <pd-parameter cycle="100000" timeout="300000" validity-behavior="zero" redundant="0" marshall="off" callback="off" offset-address="0"/>
         <source id="1" uri1="ip:192.168.56.2" name="HMI_UNICAST_01"/>
         <destination id="1" uri="ip:192.168.56.1" name="GW_DOOR_01"/>
       </telegram>
 
       <!-- MD sink: optional command/result path from gateway to HMI -->
-      <telegram name="GatewayCommandToHMI_MD_RX" com-id="2102" data-set-id="1002" com-parameter-id="1" type="sink" create="off">
+      <telegram name="GatewayCommandToHMI_MD_RX" com-id="2201" data-set-id="1002" com-parameter-id="1" type="sink" create="off">
         <md-parameter protocol="UDP" marshall="off" callback="off"/>
         <source id="1" uri1="ip:192.168.56.1" name="GW_DOOR_01"/>
         <destination id="1" uri="ip:192.168.56.2" name="HMI_UNICAST_01"/>
