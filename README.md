@@ -42,7 +42,7 @@ Default IP layout:
 
 - PD subscribe (`comId=2001`) from gateway over unicast and multicast
 - PD publish (`comId=2002`) from HMI to gateway
-- MD notify send (`comId=2101`) from HMI to gateway
+- PD publish (`comId=2101`) from HMI to gateway (DoorCommandAggregated, dataset 1002)
 - MD listener (`comId=2102`) from gateway to HMI
 
 HMI XML stack configuration is provided in `config/trdp_hmi.xml`.
