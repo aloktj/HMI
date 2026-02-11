@@ -1,0 +1,121 @@
+
+--- Module:   ..\..\src\vos\common\vos_mem.c (C++)
+
+--- Module:   ..\..\src\vos\common\vos_utils.c (C++)
+
+--- Module:   ..\..\src\vos\posix\vos_thread.c (C++)
+
+--- Module:   ..\..\src\vos\posix\vos_sock.c (C++)
+
+--- Module:   ..\..\src\vos\posix\vos_shared_mem.c (C++)
+
+--- Module:   ..\..\src\common\tlc_if.c (C++)
+
+--- Module:   ..\..\src\common\tlp_if.c (C++)
+
+--- Module:   ..\..\src\common\tlm_if.c (C++)
+
+--- Module:   ..\..\src\common\trdp_mdcom.c (C++)
+
+--- Module:   ..\..\src\common\trdp_pdcom.c (C++)
+
+--- Module:   ..\..\src\common\trdp_pdindex.c (C++)
+
+--- Module:   ..\..\src\common\trdp_utils.c (C++)
+
+--- Module:   ..\..\src\common\trdp_stats.c (C++)
+_
+{
+..\..\src\common\trdp_stats.c  78  Error 1066: Symbol 'trdp_initStats(struct
+    TRDP_SESSION *)' declared as "C" conflicts with line 48, file
+    C:\sourceforgeSVN\trdp\src\common\trdp_stats.h, module ..\..\src\common\tlc_if.c
+C:\sourceforgeSVN\trdp\src\common\trdp_stats.h  48  Info 830: Location cited in
+    prior message
+_
+{
+..\..\src\common\trdp_stats.c  552  Error 1066: Symbol 'trdp_pdPrepareStats(struct
+    TRDP_SESSION *, struct PD_ELE *)' declared as "C" conflicts with line 49,
+    file C:\sourceforgeSVN\trdp\src\common\trdp_stats.h, module
+    ..\..\src\common\tlc_if.c
+C:\sourceforgeSVN\trdp\src\common\trdp_stats.h  49  Info 830: Location cited in
+    prior message
+
+--- Module:   ..\..\src\common\tau_marshall.c (C++)
+
+--- Module:   ..\..\src\common\tau_ctrl.c (C++)
+
+--- Module:   ..\..\src\common\tau_dnr.c (C++)
+
+--- Module:   ..\..\src\common\tau_tti.c (C++)
+
+/// Start of Pass 2 ///
+
+--- Module:   ..\..\src\vos\common\vos_mem.c (C++)
+
+--- Module:   ..\..\src\vos\common\vos_utils.c (C++)
+
+--- Module:   ..\..\src\vos\posix\vos_thread.c (C++)
+
+--- Module:   ..\..\src\vos\posix\vos_sock.c (C++)
+
+--- Module:   ..\..\src\vos\posix\vos_shared_mem.c (C++)
+
+--- Module:   ..\..\src\common\tlc_if.c (C++)
+
+--- Module:   ..\..\src\common\tlp_if.c (C++)
+
+--- Module:   ..\..\src\common\tlm_if.c (C++)
+
+--- Module:   ..\..\src\common\trdp_mdcom.c (C++)
+
+--- Module:   ..\..\src\common\trdp_pdcom.c (C++)
+
+--- Module:   ..\..\src\common\trdp_pdindex.c (C++)
+
+--- Module:   ..\..\src\common\trdp_utils.c (C++)
+
+--- Module:   ..\..\src\common\trdp_stats.c (C++)
+
+--- Module:   ..\..\src\common\tau_marshall.c (C++)
+
+--- Module:   ..\..\src\common\tau_ctrl.c (C++)
+
+--- Module:   ..\..\src\common\tau_dnr.c (C++)
+
+--- Module:   ..\..\src\common\tau_tti.c (C++)
+
+/// Start of Pass 3 ///
+
+--- Module:   ..\..\src\vos\common\vos_mem.c (C++)
+
+--- Module:   ..\..\src\vos\common\vos_utils.c (C++)
+
+--- Module:   ..\..\src\vos\posix\vos_thread.c (C++)
+
+--- Module:   ..\..\src\vos\posix\vos_sock.c (C++)
+
+--- Module:   ..\..\src\vos\posix\vos_shared_mem.c (C++)
+
+--- Module:   ..\..\src\common\tlc_if.c (C++)
+
+--- Module:   ..\..\src\common\tlp_if.c (C++)
+
+--- Module:   ..\..\src\common\tlm_if.c (C++)
+
+--- Module:   ..\..\src\common\trdp_mdcom.c (C++)
+
+--- Module:   ..\..\src\common\trdp_pdcom.c (C++)
+
+--- Module:   ..\..\src\common\trdp_pdindex.c (C++)
+
+--- Module:   ..\..\src\common\trdp_utils.c (C++)
+
+--- Module:   ..\..\src\common\trdp_stats.c (C++)
+
+--- Module:   ..\..\src\common\tau_marshall.c (C++)
+
+--- Module:   ..\..\src\common\tau_ctrl.c (C++)
+
+--- Module:   ..\..\src\common\tau_dnr.c (C++)
+
+--- Module:   ..\..\src\common\tau_tti.c (C++)
