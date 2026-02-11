@@ -3,18 +3,20 @@
 #
 # Dependencies:
 #   - TRDP library (import/3.0.0.0)
-#   - Crow C++ HTTP framework (crow_all.h in include/)
+#   - Crow C++ HTTP framework (import/Crow-master)
 #   - Boost ASIO headers (required by Crow)
 #   - pthreads, rt, uuid
 # ============================================================
 
 TRDP_DIR  := import/3.0.0.0
 TRDP_OUT  := $(TRDP_DIR)/bld/output/linux-rel
+CROW_DIR  := import/Crow-master
+CROW_INC  := $(CROW_DIR)/include
 
 APP       := hmi_webapp
 CXX       ?= g++
-CXXFLAGS  ?= -std=c++17 -Wall -Wextra -O2 -DPOSIX -DMD_SUPPORT=1
-INCLUDES  := -Iinclude -I$(TRDP_DIR)/src/api -I$(TRDP_DIR)/src/vos/api
+CXXFLAGS  ?= -std=c++17 -Wall -Wextra -O2 -DPOSIX -DMD_SUPPORT=1 -DCROW_USE_BOOST
+INCLUDES  := -Iinclude -I$(CROW_INC) -I$(TRDP_DIR)/src/api -I$(TRDP_DIR)/src/vos/api
 LDFLAGS   := -L$(TRDP_OUT)
 LDLIBS    := -ltrdp -lpthread -lm -lrt -luuid -lboost_system
 
@@ -41,14 +43,11 @@ trdp-lib: trdp-config
 	@$(MAKE) -C $(TRDP_DIR) libtrdp
 	@$(MAKE) -C $(TRDP_DIR) libtrdpap
 
-# Download Crow single header if not present
-include/crow_all.h:
-	@echo "Downloading Crow v1.2.0 single header..."
-	@mkdir -p include
-	curl -fsSL -o include/crow_all.h \
-	  https://github.com/CrowCpp/Crow/releases/download/v1.2.0/crow_all.h
+CROW_HEADER := $(CROW_INC)/crow.h
 
-$(APP): src/hmi_main.cpp include/hmi_trdp.h include/crow_all.h | trdp-lib
+# Crow include sanity check (added under import/)
+
+$(APP): src/hmi_main.cpp include/hmi_trdp.h $(CROW_HEADER) | trdp-lib
 	$(CXX) $(CXXFLAGS) $(INCLUDES) $< -o $@ $(LDFLAGS) $(LDLIBS)
 
 app: $(APP)

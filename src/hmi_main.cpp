@@ -25,7 +25,7 @@
 #include <string>
 #include <thread>
 
-#include "crow_all.h"   /* Crow single-header — download from crowcpp.org */
+#include "crow.h"       /* Crow headers from import/Crow-master/include */
 #include "hmi_trdp.h"
 
 /* ===================================================================
