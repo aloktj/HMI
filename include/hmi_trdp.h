@@ -8,6 +8,7 @@
 #define HMI_MD_TX_COMID             2101u
 #define HMI_MD_RX_COMID             2102u
 
+#define HMI_DOOR_COUNT              4u
 #define HMI_PD_PAYLOAD_SIZE         64u
 #define HMI_MD_PAYLOAD_SIZE         16u
 
